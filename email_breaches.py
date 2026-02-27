@@ -20,5 +20,5 @@ def check_email(email, api_key):
 
 if __name__ == "__main__":
     email = input("Enter your email address to check for breaches: ")
-    api_key = "your_api_key_here"
+    api_key = input("Enter your HIBP API key here: ")
     check_email(email, api_key)

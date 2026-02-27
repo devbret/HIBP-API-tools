@@ -23,5 +23,5 @@ def check_email_in_pastes(email, api_key):
 
 if __name__ == "__main__":
     email = input("Enter your email address to check for pastes: ")
-    api_key = "enter_here"
+    api_key = input("Enter your HIBP API key here: ")
     check_email_in_pastes(email, api_key)
