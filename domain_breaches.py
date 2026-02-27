@@ -21,5 +21,5 @@ def check_breaches(domain, api_key):
 
 if __name__ == "__main__":
     domain = input("Enter the domain to check for breaches: ")
-    api_key = "enter_here"
+    api_key = input("Enter your HIBP API key here: ")
     check_breaches(domain, api_key)

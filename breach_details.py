@@ -30,5 +30,5 @@ def get_breach_details(breach_name, api_key):
 
 if __name__ == "__main__":
     breach_name = input("Enter the name of the breach to get details: ")
-    api_key = "your_api_key_here"
+    api_key = input("Enter your HIBP API key here: ")
     get_breach_details(breach_name, api_key)
