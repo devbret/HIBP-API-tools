@@ -10,6 +10,8 @@ Together these Python Python programs range from simple interactive scripts to m
 
 All but one of the Python scripts in this repo require a HIBP API key in order to send and receive data. For more information, please visit [the HaveIBeenPwned website](https://haveibeenpwned.com/API/Key).
 
+Below are instructions for installing and running this application on a Linux machine.
+
 ### Programs Needed
 
 - [Git](https://git-scm.com/downloads)
@@ -31,3 +33,15 @@ All but one of the Python scripts in this repo require a HIBP API key in order t
 6. Run a selected script with the appropriate command
 
 7. The results will be returned to you in your terminal
+
+## Other Considerations
+
+This project repo is intended to demonstrate an ability to do the following:
+
+- Integrate multiple HIBP API endpoints to monitor breaches, query compromised emails/domains and track stealer log activity
+
+- Reliably automate breach intelligence gathering and reporting
+
+- Perform targeted security checks to enable automated OSINT workflows for identifying exposed credentials and compromised assets
+
+If you have any questions or would like to collaborate, please reach out either on GitHub or via [my website](https://bretbernhoft.com/).
