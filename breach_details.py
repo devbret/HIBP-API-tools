@@ -1,11 +1,16 @@
+import os
+
 import requests
+from dotenv import load_dotenv
+from getpass import getpass
+from urllib.parse import quote
 
 def get_breach_details(breach_name, api_key):
     headers = {
         'User-Agent': 'BreachDetailsTool',
         'hibp-api-key': api_key,
     }
-    url = f"https://haveibeenpwned.com/api/v3/breach/{breach_name}"
+    url = f"https://haveibeenpwned.com/api/v3/breach/{quote(breach_name, safe='')}"
 
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
@@ -29,6 +34,7 @@ def get_breach_details(breach_name, api_key):
         print("Error occurred while fetching breach details.")
 
 if __name__ == "__main__":
+    load_dotenv()
     breach_name = input("Enter the name of the breach to get details: ")
-    api_key = input("Enter your HIBP API key here: ")
+    api_key = os.getenv("HIBP_API_KEY") or getpass("Enter your HIBP API key here: ")
     get_breach_details(breach_name, api_key)
