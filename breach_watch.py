@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 from urllib.parse import quote
 
 import requests
+from dotenv import load_dotenv
 
 HIBP_BASE = "https://haveibeenpwned.com/api/v3"
 
@@ -212,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 def main() -> int:
+    load_dotenv()
     parser = build_parser()
     args = parser.parse_args()
     return args.func(args)

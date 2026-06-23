@@ -1,15 +1,17 @@
 import requests
 import sys
 import time
+import os
+from urllib.parse import quote
 
-HIBP_API_KEY = 'your_hibp_api_key_here'
+from dotenv import load_dotenv
 
 def check_email(email, api_key):
     headers = {
         'User-Agent': 'EmailBreachCheckTool',
         'hibp-api-key': api_key,
     }
-    url = f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}?truncateResponse=false"
+    url = f"https://haveibeenpwned.com/api/v3/breachedaccount/{quote(email, safe='')}?truncateResponse=false"
 
     wait_time = 1.5 
     while True:
@@ -32,10 +34,17 @@ def check_email(email, api_key):
             break
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        emails = sys.argv[1:]
-        for email in emails:
-            check_email(email, HIBP_API_KEY)
-            time.sleep(1.5) 
-    else:
-        print("Usage: python script.py <email1> <email2> ...")
+    load_dotenv()
+    if len(sys.argv) <= 1:
+        print("Usage: HIBP_API_KEY=... python multiple_emails_in_breaches.py <email1> <email2> ...")
+        raise SystemExit(1)
+
+    api_key = os.getenv("HIBP_API_KEY")
+    if not api_key:
+        print("Error: set the HIBP_API_KEY environment variable.", file=sys.stderr)
+        raise SystemExit(2)
+
+    emails = sys.argv[1:]
+    for email in emails:
+        check_email(email, api_key)
+        time.sleep(1.5)

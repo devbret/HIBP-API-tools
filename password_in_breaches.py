@@ -1,5 +1,6 @@
 import requests
 import hashlib
+from getpass import getpass
 
 def hash_password(password):
     sha1password = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
@@ -24,5 +25,5 @@ def check_password(password):
     print("Your password has not appeared in any breach.")
 
 if __name__ == "__main__":
-    password = input("Enter the password to check: ")
+    password = getpass("Enter the password to check: ")
     check_password(password)
