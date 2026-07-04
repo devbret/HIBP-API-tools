@@ -1,40 +1,36 @@
-import os
-
-import requests
-from dotenv import load_dotenv
-from getpass import getpass
+import sys
 from urllib.parse import quote
 
-def get_breach_details(breach_name, api_key):
-    headers = {
-        'User-Agent': 'BreachDetailsTool',
-        'hibp-api-key': api_key,
-    }
-    url = f"https://haveibeenpwned.com/api/v3/breach/{quote(breach_name, safe='')}"
+from hibp import error_message, hibp_get, strip_html
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        breach = response.json()
+def format_breach(breach):
+    return [
+        ("Name", breach.get("Name")),
+        ("Title", breach.get("Title")),
+        ("Domain", breach.get("Domain")),
+        ("Breach date", breach.get("BreachDate")),
+        ("PwnCount", breach.get("PwnCount")),
+        ("Description", strip_html(breach.get("Description"))),
+        ("Data classes compromised", ", ".join(breach.get("DataClasses") or [])),
+        ("Is verified", breach.get("IsVerified")),
+        ("Is fabricated", breach.get("IsFabricated")),
+        ("Is sensitive", breach.get("IsSensitive")),
+        ("Is retired", breach.get("IsRetired")),
+        ("Is spam list", breach.get("IsSpamList")),
+    ]
+
+def get_breach_details(breach_name):
+    resp = hibp_get(f"/breach/{quote(breach_name, safe='')}", user_agent="BreachDetailsTool")
+    if resp.status_code == 200:
+        breach = resp.json()
         print(f"Details for {breach_name}:")
-        print(f"- Name: {breach['Name']}")
-        print(f"- Title: {breach['Title']}")
-        print(f"- Domain: {breach['Domain']}")
-        print(f"- Breach date: {breach['BreachDate']}")
-        print(f"- PwnCount: {breach['PwnCount']}")
-        print(f"- Description: {breach['Description']}")
-        print(f"- Data classes compromised: {', '.join(breach['DataClasses'])}")
-        print(f"- Is verified: {breach['IsVerified']}")
-        print(f"- Is fabricated: {breach['IsFabricated']}")
-        print(f"- Is sensitive: {breach['IsSensitive']}")
-        print(f"- Is retired: {breach['IsRetired']}")
-        print(f"- Is spam list: {breach['IsSpamList']}")
-    elif response.status_code == 404:
+        for label, value in format_breach(breach):
+            print(f"- {label}: {value}")
+    elif resp.status_code == 404:
         print(f"No breach found with the name {breach_name}.")
     else:
-        print("Error occurred while fetching breach details.")
+        print(f"Error occurred while fetching breach details ({error_message(resp)}).", file=sys.stderr)
 
 if __name__ == "__main__":
-    load_dotenv()
     breach_name = input("Enter the name of the breach to get details: ")
-    api_key = os.getenv("HIBP_API_KEY") or getpass("Enter your HIBP API key here: ")
-    get_breach_details(breach_name, api_key)
+    get_breach_details(breach_name)
