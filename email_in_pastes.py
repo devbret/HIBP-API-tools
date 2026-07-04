@@ -1,33 +1,31 @@
-import os
-
-import requests
-from dotenv import load_dotenv
-from getpass import getpass
+import sys
 from urllib.parse import quote
 
-def check_email_in_pastes(email, api_key):
-    headers = {
-        'User-Agent': 'PasteCheckTool',
-        'hibp-api-key': api_key,
-    }
-    url = f"https://haveibeenpwned.com/api/v3/pasteaccount/{quote(email, safe='')}"
+from hibp import error_message, get_api_key, get_input, hibp_get
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        pastes = response.json()
+def check_email_in_pastes(email, api_key):
+    resp = hibp_get(
+        f"/pasteaccount/{quote(email, safe='')}",
+        user_agent="PasteCheckTool",
+        api_key=api_key,
+    )
+    if resp.status_code == 200:
+        pastes = resp.json()
         if pastes:
             print(f"Email {email} has appeared in the following pastes:")
             for paste in pastes:
-                print(f"- Source: {paste['Source']} | ID: {paste['Id']} | Title: {paste.get('Title', 'N/A')} | Date: {paste['Date']}")
+                print(
+                    f"- Source: {paste['Source']} | ID: {paste['Id']} | "
+                    f"Title: {paste.get('Title') or 'N/A'} | Date: {paste.get('Date') or 'N/A'}"
+                )
         else:
             print(f"No pastes found for {email}.")
-    elif response.status_code == 404:
+    elif resp.status_code == 404:
         print(f"No pastes found for {email}.")
     else:
-        print("Error occurred while fetching paste information.")
+        print(f"Error occurred while fetching paste information ({error_message(resp)}).", file=sys.stderr)
 
 if __name__ == "__main__":
-    load_dotenv()
-    email = input("Enter your email address to check for pastes: ")
-    api_key = os.getenv("HIBP_API_KEY") or getpass("Enter your HIBP API key here: ")
+    email = get_input("HIBP_EMAIL", "Enter your email address to check for pastes: ")
+    api_key = get_api_key(prompt=True)
     check_email_in_pastes(email, api_key)

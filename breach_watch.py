@@ -4,63 +4,40 @@ import argparse
 import json
 import os
 import sys
-import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from urllib.parse import quote
 
-import requests
-from dotenv import load_dotenv
-
-HIBP_BASE = "https://haveibeenpwned.com/api/v3"
+from hibp import get_api_key, hibp_get
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-def hibp_get(
-    path: str,
-    api_key: str,
-    user_agent: str,
-    params: Optional[Dict[str, Any]] = None,
-    timeout: int = 20,
-    max_retries: int = 3,
-) -> requests.Response:
-    url = f"{HIBP_BASE}{path}"
-    headers = {
-        "User-Agent": user_agent,
-        "hibp-api-key": api_key,
-    }
-
-    for attempt in range(max_retries + 1):
-        resp = requests.get(url, headers=headers, params=params, timeout=timeout)
-
-        if resp.status_code != 429:
-            return resp
-
-        retry_after = resp.headers.get("retry-after")
-        wait_s = int(retry_after) if (retry_after and retry_after.isdigit()) else 2
-        if attempt >= max_retries:
-            return resp
-        time.sleep(wait_s)
-
-    return resp
 
 def load_state(state_path: str) -> Dict[str, Any]:
     if not os.path.exists(state_path):
         return {}
     try:
         with open(state_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+            state = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: could not read state file {state_path}: {e}", file=sys.stderr)
         return {}
+    if not isinstance(state, dict):
+        print(f"Warning: state file {state_path} is not a JSON object; starting fresh.", file=sys.stderr)
+        return {}
+    return state
 
 def save_state(state_path: str, state: Dict[str, Any]) -> None:
-    os.makedirs(os.path.dirname(state_path), exist_ok=True)
-    with open(state_path, "w", encoding="utf-8") as f:
+    state_dir = os.path.dirname(state_path)
+    if state_dir:
+        os.makedirs(state_dir, exist_ok=True)
+    tmp_path = f"{state_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, state_path)
 
 def get_subscribed_domains(api_key: str, user_agent: str) -> Dict[str, Any]:
-    resp = hibp_get("/subscribeddomains", api_key, user_agent)
+    resp = hibp_get("/subscribeddomains", user_agent, api_key=api_key)
     if resp.status_code == 200:
         return {"ok": True, "domains": resp.json()}
     if resp.status_code in (401, 403):
@@ -68,7 +45,7 @@ def get_subscribed_domains(api_key: str, user_agent: str) -> Dict[str, Any]:
     return {"ok": False, "error": f"Unexpected response: {resp.status_code} {resp.text.strip()}"}
 
 def get_latest_breach(api_key: str, user_agent: str) -> Dict[str, Any]:
-    resp = hibp_get("/latestbreach", api_key, user_agent)
+    resp = hibp_get("/latestbreach", user_agent, api_key=api_key)
     if resp.status_code == 200:
         return {"ok": True, "latest": resp.json()}
     if resp.status_code in (401, 403):
@@ -77,7 +54,7 @@ def get_latest_breach(api_key: str, user_agent: str) -> Dict[str, Any]:
 
 def get_breached_domain(domain: str, api_key: str, user_agent: str) -> Dict[str, Any]:
     enc_domain = quote(domain.strip(), safe="")
-    resp = hibp_get(f"/breacheddomain/{enc_domain}", api_key, user_agent)
+    resp = hibp_get(f"/breacheddomain/{enc_domain}", user_agent, api_key=api_key)
 
     if resp.status_code == 200:
         return {"ok": True, "domain": domain, "results": resp.json()}
@@ -97,7 +74,7 @@ def summarize_domain_results(domain: str, results: Dict[str, Any]) -> str:
     )
 
 def cmd_run(args: argparse.Namespace) -> int:
-    api_key = args.api_key or os.getenv("HIBP_API_KEY")
+    api_key = get_api_key(args.api_key)
     if not api_key:
         print("Error: Provide --api-key or set HIBP_API_KEY.", file=sys.stderr)
         return 2
@@ -161,14 +138,14 @@ def cmd_run(args: argparse.Namespace) -> int:
                 for alias, breaches in sorted(results_dict.items()):
                     print(f"   - {alias}@{domain}: {', '.join(breaches)}")
         else:
-            print(f"{domain}: ERROR — {res.get('error')}", file=sys.stderr)
+            print(f"{domain}: ERROR - {res.get('error')}", file=sys.stderr)
 
     state["latestbreach"] = latest
-    state.setdefault("history", [])
-    state["history"].append(run_record)
-
-    if isinstance(state["history"], list) and len(state["history"]) > args.keep_history:
-        state["history"] = state["history"][-args.keep_history :]
+    history = state.get("history")
+    if not isinstance(history, list):
+        history = []
+    history.append(run_record)
+    state["history"] = history[-args.keep_history:] if args.keep_history > 0 else []
 
     save_state(state_path, state)
 
@@ -213,7 +190,6 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 def main() -> int:
-    load_dotenv()
     parser = build_parser()
     args = parser.parse_args()
     return args.func(args)

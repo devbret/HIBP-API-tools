@@ -1,24 +1,24 @@
-import requests
 import hashlib
 from getpass import getpass
 
+import requests
+
 def hash_password(password):
-    sha1password = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
-    return sha1password
+    return hashlib.sha1(password.encode("utf-8"), usedforsecurity=False).hexdigest().upper()
 
 def check_password(password):
     sha1password = hash_password(password)
     prefix, suffix = sha1password[:5], sha1password[5:]
     url = f"https://api.pwnedpasswords.com/range/{prefix}"
-    response = requests.get(url)
-    
+    response = requests.get(url, headers={"Add-Padding": "true"}, timeout=20)
+
     if response.status_code != 200:
-        print("Error fetching data from HIBP API.")
+        print(f"Error fetching data from HIBP API (HTTP {response.status_code}).")
         return
 
-    hashes = (line.split(':') for line in response.text.splitlines())
-    for h, count in hashes:
-        if h == suffix:
+    for line in response.text.splitlines():
+        h, _, count = line.partition(":")
+        if h == suffix and int(count) > 0:
             print(f"Password has been breached! It has appeared in {count} breaches.")
             return
 
