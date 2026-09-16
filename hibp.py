@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import os
+import random
 import re
 import time
 from getpass import getpass
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 
 HIBP_BASE = "https://haveibeenpwned.com/api/v3"
 
+BASE_RETRY_WAIT_S = 2
 MAX_RETRY_WAIT_S = 60
 
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -46,11 +48,15 @@ def hibp_get(
         headers["hibp-api-key"] = api_key
 
     resp = requests.get(url, headers=headers, params=params, timeout=timeout)
-    for _ in range(max_retries):
+    for attempt in range(max_retries):
         if resp.status_code != 429:
             break
         retry_after = resp.headers.get("retry-after")
-        wait_s = int(retry_after) if (retry_after and retry_after.isdigit()) else 2
+        if retry_after and retry_after.isdigit():
+            wait_s = float(retry_after)
+        else:
+            backoff = BASE_RETRY_WAIT_S * (2 ** attempt)
+            wait_s = backoff + random.uniform(0, backoff / 2)
         time.sleep(min(wait_s, MAX_RETRY_WAIT_S))
         resp = requests.get(url, headers=headers, params=params, timeout=timeout)
     return resp
